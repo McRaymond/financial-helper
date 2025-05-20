@@ -1,25 +1,25 @@
 import { NextRequest, NextResponse } from "next/server"
 
-let expenses = [
-  { id: 1, name: "Groceries", amount: 120.45 },
-  { id: 2, name: "Internet", amount: 60.0 },
-  { id: 3, name: "Gas", amount: 45.2 },
-  { id: 4, name: "Electricity", amount: 85.0 },
-]
+const monthData: Map<string, any[]> = global.monthData || (global.monthData = new Map())
 
-export async function GET() {
-  return NextResponse.json(expenses)
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url)
+  const month = searchParams.get("month") || "default"
+  const data = monthData.get(month) || []
+  return NextResponse.json(data)
 }
 
 export async function POST(req: NextRequest) {
+  const { searchParams } = new URL(req.url)
+  const month = searchParams.get("month") || "default"
   try {
-    const data = await req.json()
-    if (!Array.isArray(data)) {
-      return NextResponse.json({ error: "Invalid data" }, { status: 400 })
+    const updatedExpenses = await req.json()
+    if (!Array.isArray(updatedExpenses)) {
+      return NextResponse.json({ error: "Invalid expense format" }, { status: 400 })
     }
-    expenses = data
-    return NextResponse.json(expenses)
-  } catch {
-    return NextResponse.json({ error: "Invalid request" }, { status: 500 })
+    monthData.set(month, updatedExpenses)
+    return NextResponse.json(updatedExpenses)
+  } catch (err) {
+    return NextResponse.json({ error: "Failed to parse JSON" }, { status: 500 })
   }
 }

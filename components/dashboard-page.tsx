@@ -5,6 +5,7 @@ import { DollarSign, CreditCard, PiggyBank, TrendingUp, Trash2 } from "lucide-re
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { format } from "date-fns"
 
 export default function DashboardPage() {
   const [dashboardData, setDashboardData] = useState(null)
@@ -13,30 +14,31 @@ export default function DashboardPage() {
   const [showExpenses, setShowExpenses] = useState(false)
   const [expenses, setExpenses] = useState([])
   const [newExpense, setNewExpense] = useState({ name: "", amount: "" })
+  const [month, setMonth] = useState(() => format(new Date(), "MMMM"))
 
   useEffect(() => {
-    fetch("/api/dashboard")
+    fetch(`/api/dashboard?month=${month}`)
       .then((res) => res.json())
       .then((data) => {
         setDashboardData(data)
         setFormData(data)
       })
 
-    fetch("/api/expenses")
+    fetch(`/api/expenses?month=${month}`)
       .then((res) => res.json())
       .then((data) => setExpenses(data))
-  }, [])
+  }, [month])
 
   useEffect(() => {
     const total = expenses.reduce((acc, e) => acc + parseFloat(e.amount || 0), 0)
     const updated = { ...formData, expenses: total }
     setFormData(updated)
-    fetch("/api/dashboard", {
+    fetch(`/api/dashboard?month=${month}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updated),
     })
-    fetch("/api/expenses", {
+    fetch(`/api/expenses?month=${month}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(expenses),
@@ -48,7 +50,7 @@ export default function DashboardPage() {
   }
 
   const handleSave = async () => {
-    const res = await fetch("/api/dashboard", {
+    const res = await fetch(`/api/dashboard?month=${month}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(formData),
@@ -70,12 +72,26 @@ export default function DashboardPage() {
     setExpenses(updatedExpenses)
   }
 
+  const handleMonthChange = (e) => {
+    const newMonth = e.target.value
+    if (newMonth !== month) {
+      setMonth(newMonth)
+    }
+  }
+
   if (!dashboardData) return <div className="p-4">Loading dashboard...</div>
 
   return (
     <div className="p-4 md:p-6 lg:p-8">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <div className="flex items-center gap-4">
+          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <select value={month} onChange={handleMonthChange} className="border rounded px-2 py-1 text-sm">
+            {["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"].map((m) => (
+              <option key={m} value={m}>{m}</option>
+            ))}
+          </select>
+        </div>
         <Button onClick={() => (editMode ? handleSave() : setEditMode(true))}>
           {editMode ? "Save" : "Edit"}
         </Button>

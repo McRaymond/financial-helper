@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Chart, registerables } from "chart.js"
 
 Chart.register(...registerables)
@@ -8,26 +8,34 @@ Chart.register(...registerables)
 export function BudgetChart() {
   const chartRef = useRef<HTMLCanvasElement>(null)
   const chartInstance = useRef<Chart | null>(null)
+  const [monthlyData, setMonthlyData] = useState<{ [key: string]: { income: number, expenses: number, savings: number } }>({})
 
   useEffect(() => {
-    if (chartRef.current) {
-      const ctx = chartRef.current.getContext("2d")
+    fetch("/api/analytics")
+      .then(res => res.json())
+      .then(data => setMonthlyData(data))
+  }, [])
 
+  useEffect(() => {
+    if (chartRef.current && Object.keys(monthlyData).length > 0) {
+      const ctx = chartRef.current.getContext("2d")
       if (ctx) {
-        // Destroy existing chart instance if it exists
         if (chartInstance.current) {
           chartInstance.current.destroy()
         }
 
-        // Create new chart
+        const labels = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+
+        const getValue = (key: string) => labels.map(m => monthlyData[m]?.[key] ?? 0)
+
         chartInstance.current = new Chart(ctx, {
           type: "line",
           data: {
-            labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+            labels,
             datasets: [
               {
                 label: "Income",
-                data: [3200, 3200, 3400, 3200, 3200, 3500, 3200, 3200, 3200, 3700, 3200, 3200],
+                data: getValue("totalBalance"),
                 borderColor: "rgb(16, 185, 129)",
                 backgroundColor: "rgba(16, 185, 129, 0.1)",
                 tension: 0.3,
@@ -35,7 +43,7 @@ export function BudgetChart() {
               },
               {
                 label: "Expenses",
-                data: [2800, 2600, 2900, 3100, 3000, 2700, 2800, 2900, 3000, 3200, 3100, 2900],
+                data: getValue("expenses"),
                 borderColor: "rgb(239, 68, 68)",
                 backgroundColor: "rgba(239, 68, 68, 0.1)",
                 tension: 0.3,
@@ -43,7 +51,7 @@ export function BudgetChart() {
               },
               {
                 label: "Savings",
-                data: [400, 600, 500, 100, 200, 800, 400, 300, 200, 500, 100, 300],
+                data: getValue("savings"),
                 borderColor: "rgb(59, 130, 246)",
                 backgroundColor: "rgba(59, 130, 246, 0.1)",
                 tension: 0.3,
@@ -72,13 +80,12 @@ export function BudgetChart() {
       }
     }
 
-    // Cleanup function
     return () => {
       if (chartInstance.current) {
         chartInstance.current.destroy()
       }
     }
-  }, [])
+  }, [monthlyData])
 
   return (
     <div className="h-[300px] w-full">
